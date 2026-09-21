@@ -3,22 +3,71 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mandi Manager - Email confirmed</title>
+<title>Mandi Manager</title>
 <style>
   body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f1a14;color:#e8f2ec;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-  .card{max-width:440px;margin:24px;padding:32px;border:1px solid #2c4a39;border-radius:14px;background:#14241b;text-align:center}
+  .card{max-width:440px;width:100%;margin:24px;padding:32px;border:1px solid #2c4a39;border-radius:14px;background:#14241b;text-align:center}
   h1{margin:0 0 10px;font-size:26px}
   p{line-height:1.5;color:#b9cfc1}
-  a.btn{display:inline-block;margin-top:14px;padding:12px 20px;border-radius:999px;background:#4caf6f;color:#06140c;font-weight:600;text-decoration:none}
+  input{width:100%;box-sizing:border-box;margin:6px 0;padding:12px;border-radius:8px;border:1px solid #2c4a39;background:#0f1a14;color:#e8f2ec;font-size:16px}
+  button,a.btn{display:inline-block;margin-top:14px;padding:12px 20px;border:0;border-radius:999px;background:#4caf6f;color:#06140c;font-weight:600;font-size:16px;text-decoration:none;cursor:pointer}
+  .err{color:#ff9a8a;min-height:20px}
   small{display:block;margin-top:22px;color:#88a595}
+  .hide{display:none}
 </style>
 </head>
 <body>
-  <div class="card">
+<div class="card">
+  <div id="v-ok">
     <h1>&#10003; Email confirmed</h1>
     <p>Your Mandi Manager account is ready.<br>Open the Mandi Manager app and sign in with your username (or Gmail) and password.</p>
     <a class="btn" href="https://github.com/krsnaplayzzz/mandi-manager-releases/releases/latest">Download the app</a>
-    <small>Need help? mandimanager.in@gmail.com &middot; +91 7470948260</small>
   </div>
+  <div id="v-reset" class="hide">
+    <h1>Choose a new password</h1>
+    <p>Type your new password below, then open the Mandi Manager app and sign in.</p>
+    <input id="p1" type="password" placeholder="New password (6+ characters)" autocomplete="new-password">
+    <input id="p2" type="password" placeholder="Confirm new password" autocomplete="new-password">
+    <div class="err" id="err"></div>
+    <button id="go">Save new password</button>
+  </div>
+  <div id="v-done" class="hide">
+    <h1>&#10003; Password changed</h1>
+    <p>Open the Mandi Manager app and sign in with your new password.</p>
+  </div>
+  <div id="v-bad" class="hide">
+    <h1>This link has expired</h1>
+    <p>Go back to the Mandi Manager app and tap "Forgot username / password?" to get a new link.</p>
+  </div>
+  <small>Need help? mandimanager.in@gmail.com &middot; +91 7470948260</small>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+  var SB_URL = 'https://nyrpnezyuldwckuwelzh.supabase.co';
+  var SB_KEY = 'sb_publishable_aFmlqxy6joCJjMPMMowfJg_VNLfF27l';
+  var params = new URLSearchParams(location.hash.replace(/^#/, ''));
+  var type = params.get('type');
+  var failed = params.get('error') || params.get('error_code');
+  function show(id){ ['v-ok','v-reset','v-done','v-bad'].forEach(function(x){ document.getElementById(x).classList.toggle('hide', x !== id); }); }
+  if(failed){ show('v-bad'); return; }
+  if(type !== 'recovery'){ show('v-ok'); return; }
+  show('v-reset');
+  var sb = window.supabase.createClient(SB_URL, SB_KEY);
+  var err = document.getElementById('err');
+  document.getElementById('go').onclick = async function(){
+    var a = document.getElementById('p1').value, b = document.getElementById('p2').value;
+    err.textContent = '';
+    if(a.length < 6){ err.textContent = 'Password should be at least 6 characters.'; return; }
+    if(a !== b){ err.textContent = 'Passwords do not match.'; return; }
+    var s = await sb.auth.getSession();
+    if(!s.data || !s.data.session){ show('v-bad'); return; }
+    var r = await sb.auth.updateUser({ password: a });
+    if(r.error){ err.textContent = r.error.message; return; }
+    await sb.auth.signOut();
+    show('v-done');
+  };
+})();
+</script>
 </body>
 </html>
